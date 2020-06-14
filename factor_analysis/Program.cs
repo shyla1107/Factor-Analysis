@@ -13,11 +13,11 @@ namespace FactorAnalysis
             List<string[]> priceString = DataPreprocess.ReadCsvFile(@"/Users/tushilan/Desktop/factoranalysis/MarketDataPrice.csv");
             List<string[]> dividendString = DataPreprocess.ReadCsvFile(@"/Users/tushilan/Desktop/factoranalysis/MarketDataDividend.csv");
 
-            //convert string data to dictionary
+            //convert string data to dictionary of dictionary
             Dictionary<string, Dictionary<DateTime, double>> priceDict = DataPreprocess.ConvertDict(priceString);
             Dictionary<string, Dictionary<DateTime, double>> dividendDict = DataPreprocess.ConvertDict(dividendString, "sum");
 
-            //get sorted dates
+            //get sorted dates set
             SortedSet<DateTime> dates = new SortedSet<DateTime>();
             foreach (var prices in priceDict.Values)
             {
@@ -27,6 +27,7 @@ namespace FactorAnalysis
                 }
             }
 
+            //get the dictionary of returns
             Dictionary<string, Dictionary<DateTime, double>> returnDict = new Dictionary<string, Dictionary<DateTime, double>>();
             foreach (var item in priceDict)
             {
@@ -42,6 +43,7 @@ namespace FactorAnalysis
                 returnDict.Add(ticker, returns);
             }
 
+            //get the dictionary of betas
             Dictionary<string, double> betas = new Dictionary<string, double>();
             foreach (var item in returnDict)
             {
@@ -53,7 +55,7 @@ namespace FactorAnalysis
                 betas.Add(ticker, beta);
             }
 
-
+            //get the dictionary of factors
             Dictionary<string, Dictionary<DateTime, double>> factorDict = new Dictionary<string, Dictionary<DateTime, double>>();
             foreach (var item in returnDict)
             {
@@ -79,6 +81,7 @@ namespace FactorAnalysis
 
     class DataPreprocess
     {
+        //read csv file
         public static List<string[]> ReadCsvFile(string path)
         {
             List<string[]> lineArrays = new List<string[]>();
@@ -95,6 +98,7 @@ namespace FactorAnalysis
             return lineArrays;
         }
 
+        //convert the string to dictionary of dictionary
         public static Dictionary<string, Dictionary<DateTime, double>> ConvertDict(List<string[]> dataString, string dupValue = "last")
         {
             Dictionary<string, Dictionary<DateTime, double>> dataDict = new Dictionary<string, Dictionary<DateTime, double>>();
@@ -146,6 +150,7 @@ namespace FactorAnalysis
 
     class Calculation
     {
+        //caiculate returns
         public static Dictionary<DateTime, double> CalculateReturns(SortedSet<DateTime> dates, Dictionary<DateTime, double> prices, Dictionary<DateTime, double> dividends)
         {
             Dictionary<DateTime, double> returns = new Dictionary<DateTime, double>();
@@ -176,6 +181,7 @@ namespace FactorAnalysis
             return returns;
         }
 
+        //calculate slope
         public static double CalculateSlope(List<double> xs, List<double> ys)
         {
             var xys = Enumerable.Zip(xs, ys, (x, y) => new { x = x, y = y });
@@ -185,6 +191,7 @@ namespace FactorAnalysis
             return slope;
         }
 
+        //sort the data range of beta
         public static double CalculateBeta(SortedSet<DateTime> dates, Dictionary<DateTime, double> returnsX, Dictionary<DateTime, double> returnsY)
         {
             List<double> xs = new List<double>();
@@ -203,6 +210,7 @@ namespace FactorAnalysis
             return beta;
         }
 
+        //calculate factors
         public static Dictionary<DateTime, double> CalculateFactors(SortedSet<DateTime> dates, Dictionary<DateTime, double> returnsX, Dictionary<DateTime, double> returnsY, double beta)
         {
             Dictionary<DateTime, double> factors = new Dictionary<DateTime, double>();
