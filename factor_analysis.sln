@@ -1,0 +1,17 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "factor_analysis", "factor_analysis\factor_analysis.csproj", "{D561D0FD-5055-4156-BD0E-999DD2EE1FDC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D561D0FD-5055-4156-BD0E-999DD2EE1FDC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D561D0FD-5055-4156-BD0E-999DD2EE1FDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D561D0FD-5055-4156-BD0E-999DD2EE1FDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D561D0FD-5055-4156-BD0E-999DD2EE1FDC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
