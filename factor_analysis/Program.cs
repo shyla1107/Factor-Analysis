@@ -17,7 +17,7 @@ namespace FactorAnalysis
             Dictionary<string, Dictionary<DateTime, double>> priceDict = DataPreprocess.ConvertDict(priceString);
             Dictionary<string, Dictionary<DateTime, double>> dividendDict = DataPreprocess.ConvertDict(dividendString, "sum");
 
-            //
+            //get sorted dates
             SortedSet<DateTime> dates = new SortedSet<DateTime>();
             foreach (var prices in priceDict.Values)
             {
