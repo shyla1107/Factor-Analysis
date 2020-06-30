@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 
 namespace FactorAnalysis
 {
@@ -18,214 +16,31 @@ namespace FactorAnalysis
             Dictionary<string, Dictionary<DateTime, double>> dividendDict = DataPreprocess.ConvertDict(dividendString, "sum");
 
             //get sorted dates set
-            SortedSet<DateTime> dates = new SortedSet<DateTime>();
-            foreach (var prices in priceDict.Values)
-            {
-                foreach (var date in prices.Keys)
-                {
-                    dates.Add(date);
-                }
-            }
+            SortedSet<DateTime> dates = DataPreprocess.GetDates(priceDict);
 
             //get the dictionary of returns
-            Dictionary<string, Dictionary<DateTime, double>> returnDict = new Dictionary<string, Dictionary<DateTime, double>>();
-            foreach (var item in priceDict)
-            {
-                string ticker = item.Key;
-                Dictionary<DateTime, double> prices = item.Value;
-                Dictionary<DateTime, double> dividends;
-                if (!dividendDict.TryGetValue(ticker, out dividends))
-                {
-                    dividends = new Dictionary<DateTime, double>();
-                }
+            Dictionary<string, Dictionary<DateTime, double>> returnDict = Calculation.GetReturnDict(dates, priceDict, dividendDict);
 
-                Dictionary<DateTime, double> returns = Calculation.CalculateReturns(dates, prices, dividends);
-                returnDict.Add(ticker, returns);
-            }
+            //get the dictionary of returns adding lagged var
+            Dictionary<string, Dictionary<DateTime, double>> lagReturnDict = Calculation.GetLagReturnDict(dates, returnDict);
 
-            //get the dictionary of betas
-            Dictionary<string, double> betas = new Dictionary<string, double>();
-            foreach (var item in returnDict)
-            {
-                string ticker = item.Key;
-                Dictionary<DateTime, double> returnsX = returnDict["SPY"];
-                Dictionary<DateTime, double> returnsY = item.Value;
+            //get the residual of regression on lagged return
+            Dictionary<string, Dictionary<DateTime, double>> resReturnDict = Calculation.GetResidualDict(dates, lagReturnDict, returnDict);
 
-                double beta = Calculation.CalculateBeta(dates, returnsX, returnsY);
-                betas.Add(ticker, beta);
-            }
+            //get simple factors
+            Dictionary<string, Dictionary<DateTime, double>> simpleFactorDict = Calculation.GetFactorDict(dates, returnDict,1);
 
-            //get the dictionary of factors
-            Dictionary<string, Dictionary<DateTime, double>> factorDict = new Dictionary<string, Dictionary<DateTime, double>>();
-            foreach (var item in returnDict)
-            {
-                string ticker = item.Key;
-                Dictionary<DateTime, double> returnsX = returnDict["SPY"];
-                Dictionary<DateTime, double> returnsY = item.Value;
-                double beta = betas[ticker];
-                Dictionary<DateTime, double> factors;
-                if (ticker != "SPY")
-                {
-                    factors = Calculation.CalculateFactors(dates, returnsX, returnsY, beta);
-                }
-                else
-                {
-                    factors = returnDict["SPY"];
-                }
-                factorDict.Add(ticker, factors);
-            }
+            //get factors using residual return
+            Dictionary<string, Dictionary<DateTime, double>> lagFactorDict = Calculation.GetFactorDict(dates, resReturnDict,1);
+
+            //get factors using residual return with decayfactor 0.99
+            Dictionary<string, Dictionary<DateTime, double>> wlsFactorDict = Calculation.GetFactorDict(dates, resReturnDict,0.99);
+
 
             System.Console.WriteLine("Success!");
         }
     }
 
-    class DataPreprocess
-    {
-        //read csv file
-        public static List<string[]> ReadCsvFile(string path)
-        {
-            List<string[]> lineArrays = new List<string[]>();
-            string line = "";
-            using (StreamReader sr = new StreamReader(path))
-            {
-                while ((line = sr.ReadLine()) != null)
-                {
-                    string[] sa = line.Split(',');
-                    lineArrays.Add(sa);
-                }
-            }
 
-            return lineArrays;
-        }
-
-        //convert the string to dictionary of dictionary
-        public static Dictionary<string, Dictionary<DateTime, double>> ConvertDict(List<string[]> dataString, string dupValue = "last")
-        {
-            Dictionary<string, Dictionary<DateTime, double>> dataDict = new Dictionary<string, Dictionary<DateTime, double>>();
-
-            for (int i = 1; i < dataString.Count; i++)
-            {
-                string[] dataPair = dataString[i];
-                string ticker = dataPair[0];
-                DateTime date = System.Convert.ToDateTime(dataPair[1]);
-                double value;
-                if (dataPair[2] == "NULL")
-                {
-                    value = Double.NaN;
-                }
-                else
-                {
-                    value = System.Convert.ToDouble(dataPair[2]);
-                }
-
-                if (!dataDict.ContainsKey(ticker))
-                {
-                    dataDict.Add(ticker, new Dictionary<DateTime, double>() { { date, value } });
-                }
-                else if (!dataDict[ticker].ContainsKey(date))
-                {
-                    dataDict[ticker].Add(date, value);
-                }
-                else
-                {
-                    if (dupValue == "first") { }
-                    else if (dupValue == "last")
-                    {
-                        dataDict[ticker][date] = value;
-                    }
-                    else if (dupValue == "sum")
-                    {
-                        dataDict[ticker][date] += value;
-                    }
-                    else
-                    {
-                        throw new NotImplementedException();
-                    }
-                }
-            }
-
-            return dataDict;
-        }
-    }
-
-    class Calculation
-    {
-        //caiculate returns
-        public static Dictionary<DateTime, double> CalculateReturns(SortedSet<DateTime> dates, Dictionary<DateTime, double> prices, Dictionary<DateTime, double> dividends)
-        {
-            Dictionary<DateTime, double> returns = new Dictionary<DateTime, double>();
-
-            double pricePrevious = Double.NaN;
-            foreach (var date in dates)
-            {
-                double price;
-                if (!prices.TryGetValue(date, out price))
-                {
-                    price = Double.NaN;
-                }
-                double dividend;
-                if (!dividends.TryGetValue(date, out dividend))
-                {
-                    dividend = 0;
-                }
-
-                double ret = (price + dividend - pricePrevious) / pricePrevious;
-                if (!Double.IsNaN(ret))
-                {
-                    returns.Add(date, ret);
-                }
-
-                pricePrevious = price;
-            }
-
-            return returns;
-        }
-
-        //calculate slope
-        public static double CalculateSlope(List<double> xs, List<double> ys)
-        {
-            var xys = Enumerable.Zip(xs, ys, (x, y) => new { x = x, y = y });
-            double xbar = xs.Average();
-            double ybar = ys.Average();
-            double slope = xys.Sum(xy => (xy.x - xbar) * (xy.y - ybar)) / xs.Sum(x => (x - xbar) * (x - xbar));
-            return slope;
-        }
-
-        //sort the data range of beta
-        public static double CalculateBeta(SortedSet<DateTime> dates, Dictionary<DateTime, double> returnsX, Dictionary<DateTime, double> returnsY)
-        {
-            List<double> xs = new List<double>();
-            List<double> ys = new List<double>();
-            foreach (var date in dates)
-            {
-                double x;
-                double y;
-                if (returnsX.TryGetValue(date, out x) && returnsY.TryGetValue(date, out y))
-                {
-                    xs.Add(x);
-                    ys.Add(y);
-                }
-            }
-            double beta = Calculation.CalculateSlope(xs, ys);
-            return beta;
-        }
-
-        //calculate factors
-        public static Dictionary<DateTime, double> CalculateFactors(SortedSet<DateTime> dates, Dictionary<DateTime, double> returnsX, Dictionary<DateTime, double> returnsY, double beta)
-        {
-            Dictionary<DateTime, double> factors = new Dictionary<DateTime, double>();
-            foreach (var date in dates)
-            {
-                double x;
-                double y;
-                if (returnsX.TryGetValue(date, out x) && returnsY.TryGetValue(date, out y))
-                {
-                    double factor = y - beta * x;
-                    factors.Add(date, factor);
-                }
-            }
-            return factors;
-        }
-    }
 }
 
